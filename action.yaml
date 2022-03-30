@@ -33,6 +33,7 @@ runs:
   # Configure Docker to use the gcloud command-line tool as a credential
   # helper for authentication
   - name: "Configure docker to use gcloud as credential helper"
+    shell: bash
     run: |-
       gcloud auth configure-docker ${{ inputs.gar-location }}-docker.pkg.dev
 
@@ -43,11 +44,13 @@ runs:
       location: ${{ inputs.zone }}
 
   - name: "Prepare deployment files"
+    shell: bash
     run: |
       cd deploy/base
       for i in $(echo ${{ inputs.image }} | tr "," "\n"); do kustomize edit set image $i; done;
       cd ../..
 
   - name: "Deploy to Kubernetes"
+    shell: bash
     run: |
       kubectl -n ${{ inputs.ns }} apply --kustomize deploy/overlays/${{ inputs.ns }}
