@@ -1,0 +1,53 @@
+name: 'GKE kustomize deploy'
+description: 'Action for deploying GKE Kubernetes workloads'
+inputs:
+  sa-key:
+    required: true
+    description: 'Service account key in base64 format'
+  gar-location:
+    required: true
+  cluster:
+    required: true
+  zone:
+    required: true
+  ns:
+    required: true
+  image:
+    required: true
+runs:
+  using: "composite"
+  steps:
+  - name: "Checkout source"
+    uses: actions/checkout@main
+
+  # New way of authenticating with google
+  # From: https://github.com/google-github-actions/setup-gcloud
+  - name: "Auth with google"
+    uses: google-github-actions/auth@v0
+    with:
+      credentials_json: '${{ inputs.sa-key }}'
+
+  - name: "Install gcloud CLI"
+    uses: 'google-github-actions/setup-gcloud@v0'
+
+  # Configure Docker to use the gcloud command-line tool as a credential
+  # helper for authentication
+  - name: "Configure docker to use gcloud as credential helper"
+    run: |-
+      gcloud auth configure-docker ${{ inputs.gar-location }}-docker.pkg.dev
+
+  - name: 'Get GKE credentials'
+    uses: 'google-github-actions/get-gke-credentials@v0'
+    with:
+      cluster_name: ${{ inputs.cluster }}
+      location: ${{ inputs.zone }}
+
+  - name: "Prepare deployment files"
+    run: |
+      cd deploy/base
+      for i in $(echo ${{ inputs.image }} | tr "," "\n"); do kustomize edit set image $i; done;
+      cd ../..
+
+  - name: "Deploy to Kubernetes"
+    run: |
+      kubectl -n ${{ inputs.ns }} apply --kustomize deploy/overlays/${{ inputs.ns }}
