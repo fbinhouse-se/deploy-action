@@ -14,6 +14,8 @@ inputs:
     required: true
   image:
     required: true
+  annotations:
+    required: false
 runs:
   using: "composite"
   steps:
@@ -48,6 +50,14 @@ runs:
     run: |
       cd deploy/base
       for i in $(echo ${{ inputs.image }} | tr "," "\n"); do kustomize edit set image $i; done;
+      cd ../..
+
+  - name: "Set annotations"
+    if: ${{ inputs.annotations != '' }}
+    shell: bash
+    run: |
+      cd deploy/base
+      for i in $(echo ${{ inputs.annotations }} | tr "," "\n"); do kustomize edit add annotation $i; done;
       cd ../..
 
   - name: "Deploy to Kubernetes"
